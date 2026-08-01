@@ -1,0 +1,42 @@
+O que é preenchido na planilha de feedback quinzenal
+
+Tabela com 2 semanas de treino:
+pegar entrada em texto do Hevy de cada treino e jogar no app para formatar
+cada treino com exercício feito, peso e numero de repetições em cada série
+
+Tabela de Check-in
+
+Para cada dia nas duas semanas (14 dias)
+
+Peso medido em jejum
+Duração do sono 
+qualidade do sono
+satisfação do sono
+nível de alegria (lembrete fim do dia)
+nível de energia (lembrete)
+claridade mental (lembrete)
+estresse mental e emocional
+dor muscular
+imunidade
+furou a dieta (lembrete)
+fome e nível de apetite (lembrete)
+consumo café ou estimulantes (lembrete)
+digestão (lembrete)
+treinou (cruzar a tabela ou lembrete)
+horário do dia do treino (cruzar com tabela de treino ou lembrete)
+nível de motivação  (lembrete se treinou)
+nível de força (lembrete se treinou)
+numero de passos (lembrete fim do dia)
+se fez outro esporte (lembrete seg, qua e sex porém configurável caso tenha mudança além de ter opção de colocar se fez outro mesmo além do que eu já faço já que só tenho jiujitsu nesses dias)
+se fez cardio (lembrete fim do dia mesmo se fez para relembrar se fez mais e ajudar a marcar)
+duração do cardio se fez
+media do bpm do cardio se fez
+
+Cada coisa marcada com lembrete é importante para marcar no fim do dia com o intuito de marcar e se lembrar, existem outras coisas
+que podem ser preenchidas durante o dia como o cardio, treino, se fez outro esporte, mas que mesmo assim deve ter um lembrete no final do dia para caso tenha feito mais de uma vez (exceto o treino de musculação que é uma vez no dia que fizer)
+
+No final, após recolher todos esses dados, mesmo que de forma aleatória. Deve ter um botão para gerar todo o relatório para ajudar
+no preenchimento manual da planilha. 
+
+esse aplicativo deve rodar no android pois é o meu celular de uso pessoal, logo flutter seria o ideal.
+
