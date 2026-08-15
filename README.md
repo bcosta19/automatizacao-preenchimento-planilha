@@ -107,6 +107,12 @@ lib/
 
 ---
 
+## 💡 Sobre o Projeto
+
+Este projeto nasceu de uma necessidade real: automatizar a coleta e formatação diária de treinos, sono e métricas de saúde para envio quinzenal ao treinador/planilha de feedback. Desenvolvido em **Flutter**, demonstra a aplicação prática da tecnologia para resolver problemas de produtividade pessoal de ponta a ponta.
+
+---
+
 ## 📄 Licença
 
-Este projeto é de uso pessoal e privado para acompanhamento e automação de planilhas de treino.
+Distribuído sob a licença **MIT**. Consulte o arquivo [`LICENSE`](file:///home/brspike/Projects/automatizacao-preenchimento-planilha/LICENSE) para obter mais informações.
