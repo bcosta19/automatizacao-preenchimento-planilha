@@ -24,6 +24,7 @@ class _DayFormScreenState extends State<DayFormScreen> {
   late final TextEditingController _cardioMinCtrl;
   late final TextEditingController _bpmCtrl;
   late final TextEditingController _stepsCtrl;
+  late final TextEditingController _daySummaryCtrl;
 
   @override
   void initState() {
@@ -31,6 +32,13 @@ class _DayFormScreenState extends State<DayFormScreen> {
     final state = AppScope.read(context);
     _draft = CheckIn.fromJson(
         state.checkInFor(widget.date)?.toJson() ?? {'date': isoOf(widget.date)});
+    final dayWorkouts = state.workoutsForDate(widget.date);
+    if (dayWorkouts.isNotEmpty) {
+      _draft.trained = true;
+      if (_draft.workoutTime == null && dayWorkouts.first.time != null) {
+        _draft.workoutTime = dayWorkouts.first.time;
+      }
+    }
     _weightCtrl = _txt(_draft.weight, dec: true);
     _sleepCtrl = _txt(_draft.sleepHours, dec: true);
     _sportCtrl = TextEditingController(text: _draft.otherSportDesc ?? '');
@@ -40,6 +48,7 @@ class _DayFormScreenState extends State<DayFormScreen> {
     _cardioMinCtrl = _txt(_draft.cardioMinutes);
     _bpmCtrl = _txt(_draft.cardioAvgBpm);
     _stepsCtrl = _txt(_draft.steps);
+    _daySummaryCtrl = TextEditingController(text: _draft.daySummary ?? '');
   }
 
   TextEditingController _txt(num? v, {bool dec = false}) {
@@ -62,6 +71,7 @@ class _DayFormScreenState extends State<DayFormScreen> {
     _cardioMinCtrl.dispose();
     _bpmCtrl.dispose();
     _stepsCtrl.dispose();
+    _daySummaryCtrl.dispose();
     super.dispose();
   }
 
@@ -210,6 +220,48 @@ class _DayFormScreenState extends State<DayFormScreen> {
             icon: Icons.fitness_center,
             subtitle: 'se treinou hoje',
           ),
+          Builder(
+            builder: (ctx) {
+              final workouts = AppScope.of(ctx).workoutsForDate(widget.date);
+              if (workouts.isEmpty) return const SizedBox.shrink();
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(ctx).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.check_circle, size: 18, color: Theme.of(ctx).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Treino registrado automaticamente',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Theme.of(ctx).colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    for (final w in workouts)
+                      Text(
+                        '• ${w.title ?? 'Treino'}${w.time != null ? ' às ${w.time}' : ''} (${w.exercises.length} exercícios)',
+                        style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.onPrimaryContainer),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
           YesNoSwitch(
             label: 'Treinou hoje?',
             value: _draft.trained,
@@ -309,35 +361,107 @@ class _DayFormScreenState extends State<DayFormScreen> {
               ),
             ),
           ],
-          YesNoSwitch(
-            label: 'Fez cardio? (mesmo que já marcado)',
-            value: _draft.didCardio,
-            onChanged: (v) => setState(() => _draft.didCardio = v),
+          SectionHeader(
+            title: 'Cardio',
+            icon: Icons.directions_run,
+            subtitle: 'ao longo do dia',
           ),
-          if (_draft.didCardio == true)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
+          Builder(
+            builder: (context) {
+              final state = AppScope.of(context);
+              final dayCardios = state.cardiosForDate(widget.date);
+              final totalMin = state.totalCardioMinutesForDate(widget.date);
+              final avgBpm = state.avgBpmForDate(widget.date);
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: NumberField(
-                      label: 'Duração',
-                      suffix: 'min',
-                      controller: _cardioMinCtrl,
-                      onChanged: (v) => _draft.cardioMinutes = _parseInt(v),
+                  if (dayCardios.isNotEmpty) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Total: $totalMin min',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          if (avgBpm != null)
+                            Text(
+                              'BPM médio: $avgBpm bpm',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: NumberField(
-                      label: 'BPM médio',
-                      controller: _bpmCtrl,
-                      onChanged: (v) => _draft.cardioAvgBpm = _parseInt(v),
-                    ),
+                    for (final c in dayCardios)
+                      Card(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        child: ListTile(
+                          dense: true,
+                          leading: const CircleAvatar(
+                            radius: 16,
+                            child: Icon(Icons.directions_run, size: 16),
+                          ),
+                          title: Text(
+                            '${c.minutes} min${c.note?.isNotEmpty == true ? ' — ${c.note}' : ''}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            [
+                              if (c.avgBpm != null) '${c.avgBpm} bpm',
+                              if (c.time != null) 'às ${c.time}',
+                            ].join(' • '),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                onPressed: () => showCardioModal(context, existing: c),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                                onPressed: () => state.removeCardio(c),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 6),
+                  ],
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: Text(dayCardios.isEmpty ? 'Adicionar cardio neste dia' : 'Adicionar outra sessão de cardio'),
+                    onPressed: () => showCardioModal(context, initialDate: widget.date),
                   ),
                 ],
-              ),
+              );
+            },
+          ),
+          SectionHeader(
+            title: 'Resumo do Dia',
+            icon: Icons.comment_outlined,
+            subtitle: 'comentários para a semana',
+          ),
+          TextField(
+            controller: _daySummaryCtrl,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Comentários / Observações do dia',
+              hintText: 'Como foi o dia, recuperação, rendimento no treino, dieta ou imprevistos...',
+              border: OutlineInputBorder(),
             ),
+            onChanged: (v) => _draft.daySummary = v.trim().isEmpty ? null : v.trim(),
+          ),
           const SizedBox(height: 24),
           FilledButton.icon(
             icon: const Icon(Icons.save_outlined),

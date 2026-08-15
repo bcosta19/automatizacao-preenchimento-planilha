@@ -3,8 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:checkin_quinzenal/hevy_parser.dart';
 import 'package:checkin_quinzenal/models.dart';
 import 'package:checkin_quinzenal/report.dart';
+import 'package:checkin_quinzenal/storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences.setMockInitialValues({});
+
   group('parseHevyText', () {
     test('parseia formato padrão do Hevy', () {
       const text = '''
@@ -116,6 +121,7 @@ https://hevy.com/workout/FceFu1MS6Zh
       final parsed = parseHevyText(text);
       expect(parsed.title, 'Posterior A');
       expect(parsed.dateIso, '2026-07-21');
+      expect(parsed.time, '18:06');
       expect(parsed.exercises.length, 7);
       expect(parsed.exercises[0].name, 'Straight Leg Deadlift');
       expect(parsed.exercises[0].note, contains('fiz livre'));
@@ -129,10 +135,11 @@ https://hevy.com/workout/FceFu1MS6Zh
       expect(parsed.warnings, isEmpty);
     });
 
-    test('data em português', () {
+    test('data em português e horário', () {
       final parsed = parseHevyText(
           'Terça-feira, 21 de julho de 2026 às 18:06\n\nSquat\nSet 1: 50 kg x 5');
       expect(parsed.dateIso, '2026-07-21');
+      expect(parsed.time, '18:06');
     });
   });
 
@@ -253,6 +260,138 @@ https://hevy.com/workout/FceFu1MS6Zh
       expect(report, contains('Outro esporte: não'));
       expect(report, contains('Cardio: não'));
       expect(report, contains('Passos: 8500'));
+    });
+
+    test('gera relatório com meta de cardio quinzenal e múltiplas sessões', () {
+      final cardios = [
+        CardioEntry(
+          id: '1',
+          dateIso: '2026-07-27',
+          minutes: 30,
+          avgBpm: 140,
+          note: 'Esteira',
+        ),
+        CardioEntry(
+          id: '2',
+          dateIso: '2026-07-27',
+          minutes: 15,
+          avgBpm: 150,
+          note: 'Bike',
+        ),
+        CardioEntry(
+          id: '3',
+          dateIso: '2026-08-05',
+          minutes: 45,
+          avgBpm: 135,
+          note: 'Caminhada rápida',
+        ),
+      ];
+
+      final report = generateReport(
+        cycleStart: start,
+        cycleLength: 14,
+        checkIns: {},
+        workouts: [],
+        cardios: cardios,
+        weeklyCardioGoal: 150,
+      );
+
+      // Meta semanal 150 min * 2 = 300 min
+      expect(report, contains('META DE CARDIO'));
+      expect(report, contains('Meta do ciclo: 300 min (Meta semanal: 150 min)'));
+      // Total 30 + 15 + 45 = 90 min (Faltam 210 min)
+      expect(report, contains('Realizado: 90 min (30%) | Faltam: 210 min'));
+      expect(report, contains('Semana 1'));
+      expect(report, contains('Semana 2'));
+      // No dia 27/07 soma 45 min
+      expect(report, contains('Cardio: sim (45 min'));
+      expect(report, contains('Esteira'));
+      expect(report, contains('Bike'));
+    });
+
+    test('inclui resumo do dia e compilação semanal no relatório', () {
+      final checkIn1 = CheckIn(date: '2026-07-27')
+        ..daySummary = 'Treino forte de pernas, dieta 100%.';
+      final checkIn2 = CheckIn(date: '2026-08-04')
+        ..daySummary = 'Cansaço moderado, rendimento bom no cardio.';
+
+      final report = generateReport(
+        cycleStart: start,
+        cycleLength: 14,
+        checkIns: {
+          '2026-07-27': checkIn1,
+          '2026-08-04': checkIn2,
+        },
+        workouts: [],
+      );
+
+      expect(report, contains('Resumo do dia: "Treino forte de pernas, dieta 100%."'));
+      expect(report, contains('RESUMO SEMANAL (COMENTÁRIOS DOS DIAS)'));
+      expect(report, contains('--- SEMANA 1'));
+      expect(report, contains('Treino forte de pernas, dieta 100%.'));
+      expect(report, contains('--- SEMANA 2'));
+      expect(report, contains('Cansaço moderado, rendimento bom no cardio.'));
+    });
+  });
+
+  group('Cardio & Settings', () {
+    test('calcula meta de ciclo quinzenal como dobro da semanal', () {
+      final settings = Settings(
+        cycleMode: Settings.cycleQuinzenal,
+        weeklyCardioMinutes: 120,
+      );
+      expect(settings.cycleLength, 14);
+      expect(settings.cycleCardioMinutesGoal, 240);
+    });
+
+    test('calcula meta de ciclo semanal', () {
+      final settings = Settings(
+        cycleMode: Settings.cycleSemanal,
+        weeklyCardioMinutes: 150,
+      );
+      expect(settings.cycleLength, 7);
+      expect(settings.cycleCardioMinutesGoal, 150);
+    });
+  });
+
+  group('AppState Performance & Indexing', () {
+    test('indexa cardios e treinos por data com lookups rápidos', () {
+      final state = AppState();
+      final c1 = CardioEntry(id: '1', dateIso: '2026-07-27', minutes: 30);
+      final c2 = CardioEntry(id: '2', dateIso: '2026-07-27', minutes: 15);
+      final c3 = CardioEntry(id: '3', dateIso: '2026-07-28', minutes: 40);
+      state.addCardio(c1);
+      state.addCardio(c2);
+      state.addCardio(c3);
+
+      final date1 = DateTime(2026, 7, 27);
+      expect(state.totalCardioMinutesForDate(date1), 45);
+      expect(state.cardiosForDate(date1).length, 2);
+
+      final date2 = DateTime(2026, 7, 28);
+      expect(state.totalCardioMinutesForDate(date2), 40);
+    });
+
+    test('sincroniza automaticamente treinou e horário do treino com o check-in', () {
+      final state = AppState();
+      final workout = Workout(
+        dateIso: '2026-07-21',
+        time: '18:06',
+        title: 'Posterior A',
+        exercises: [
+          WorkoutExercise(
+            name: 'Deadlift',
+            sets: [WorkoutSet(weight: 160, reps: 9)],
+          ),
+        ],
+      );
+      state.addWorkout(workout);
+
+      final date = DateTime(2026, 7, 21);
+      final checkIn = state.checkInFor(date);
+      expect(checkIn, isNotNull);
+      expect(checkIn!.trained, isTrue);
+      expect(checkIn.workoutTime, '18:06');
     });
   });
 }

@@ -29,10 +29,11 @@ class CheckIn {
   bool? didCardio;
   int? cardioMinutes;
   int? cardioAvgBpm;
+  String? daySummary;
 
   CheckIn({required this.date});
 
-  static const int totalFields = 28;
+  static const int totalFields = 29;
 
   int get filledCount => [
         weight,
@@ -63,6 +64,7 @@ class CheckIn {
         didCardio,
         cardioMinutes,
         cardioAvgBpm,
+        daySummary,
       ].where((e) => e != null).length;
 
   bool get isComplete => filledCount == totalFields;
@@ -97,6 +99,7 @@ class CheckIn {
         'didCardio': didCardio,
         'cardioMinutes': cardioMinutes,
         'cardioAvgBpm': cardioAvgBpm,
+        'daySummary': daySummary,
       };
 
   factory CheckIn.fromJson(Map<String, dynamic> j) => CheckIn(
@@ -129,7 +132,8 @@ class CheckIn {
         ..sportMinutes = j['sportMinutes'] as int?
         ..didCardio = j['didCardio'] as bool?
         ..cardioMinutes = j['cardioMinutes'] as int?
-        ..cardioAvgBpm = j['cardioAvgBpm'] as int?;
+        ..cardioAvgBpm = j['cardioAvgBpm'] as int?
+        ..daySummary = j['daySummary'] as String?;
 }
 
 class WorkoutSet {
@@ -186,24 +190,63 @@ class WorkoutExercise {
 
 class Workout {
   String dateIso;
+  String? time;
   String? title;
   List<WorkoutExercise> exercises;
 
-  Workout({required this.dateIso, this.title, List<WorkoutExercise>? exercises})
+  Workout({required this.dateIso, this.time, this.title, List<WorkoutExercise>? exercises})
       : exercises = exercises ?? [];
 
   Map<String, dynamic> toJson() => {
         'dateIso': dateIso,
+        'time': time,
         'title': title,
         'exercises': exercises.map((e) => e.toJson()).toList(),
       };
 
   factory Workout.fromJson(Map<String, dynamic> j) => Workout(
         dateIso: j['dateIso'] as String? ?? '',
+        time: j['time'] as String?,
         title: j['title'] as String?,
         exercises: (j['exercises'] as List? ?? [])
             .map((e) => WorkoutExercise.fromJson(e as Map<String, dynamic>))
             .toList(),
+      );
+}
+
+class CardioEntry {
+  final String id;
+  String dateIso;
+  int minutes;
+  int? avgBpm;
+  String? time;
+  String? note;
+
+  CardioEntry({
+    required this.id,
+    required this.dateIso,
+    required this.minutes,
+    this.avgBpm,
+    this.time,
+    this.note,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'dateIso': dateIso,
+        'minutes': minutes,
+        'avgBpm': avgBpm,
+        'time': time,
+        'note': note,
+      };
+
+  factory CardioEntry.fromJson(Map<String, dynamic> j) => CardioEntry(
+        id: j['id'] as String? ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        dateIso: j['dateIso'] as String? ?? '',
+        minutes: j['minutes'] as int? ?? 0,
+        avgBpm: j['avgBpm'] as int?,
+        time: j['time'] as String?,
+        note: j['note'] as String?,
       );
 }
 
@@ -217,6 +260,7 @@ class Settings {
   String defaultSport;
   String cycleMode;
   int customCycleLength;
+  int weeklyCardioMinutes;
 
   Settings({
     this.notificationsEnabled = true,
@@ -228,6 +272,7 @@ class Settings {
     this.defaultSport = 'jiujitsu',
     this.cycleMode = 'quinzenal',
     this.customCycleLength = 10,
+    this.weeklyCardioMinutes = 150,
   });
 
   static const cycleSemanal = 'semanal';
@@ -240,6 +285,12 @@ class Settings {
         _ => 14,
       };
 
+  int get cycleCardioMinutesGoal {
+    if (cycleMode == cycleSemanal) return weeklyCardioMinutes;
+    if (cycleMode == cycleQuinzenal) return weeklyCardioMinutes * 2;
+    return (weeklyCardioMinutes * (cycleLength / 7)).round();
+  }
+
   Map<String, dynamic> toJson() => {
         'notificationsEnabled': notificationsEnabled,
         'endOfDayHour': endOfDayHour,
@@ -250,6 +301,7 @@ class Settings {
         'defaultSport': defaultSport,
         'cycleMode': cycleMode,
         'customCycleLength': customCycleLength,
+        'weeklyCardioMinutes': weeklyCardioMinutes,
       };
 
   factory Settings.fromJson(Map<String, dynamic> j) => Settings(
@@ -262,6 +314,7 @@ class Settings {
         defaultSport: j['defaultSport'] as String? ?? 'jiujitsu',
         cycleMode: j['cycleMode'] as String? ?? 'quinzenal',
         customCycleLength: j['customCycleLength'] as int? ?? 10,
+        weeklyCardioMinutes: j['weeklyCardioMinutes'] as int? ?? 150,
       );
 }
 

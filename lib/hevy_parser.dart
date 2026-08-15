@@ -2,14 +2,22 @@ import 'models.dart';
 
 class ParsedWorkout {
   String? dateIso;
+  String? time;
   String? title;
   final List<WorkoutExercise> exercises;
   final List<String> warnings;
 
-  ParsedWorkout({this.dateIso, this.title, required this.exercises, this.warnings = const []});
+  ParsedWorkout({
+    this.dateIso,
+    this.time,
+    this.title,
+    required this.exercises,
+    this.warnings = const [],
+  });
 
   Workout toWorkout(DateTime fallbackDate) => Workout(
         dateIso: dateIso ?? isoOf(fallbackDate),
+        time: time,
         title: title,
         exercises: exercises,
       );
@@ -49,6 +57,31 @@ const _monthMap = {
   'out': 10, 'dez': 12,
 };
 
+String? _parseTime(String line) {
+  // Regex for 12h format with am/pm (e.g. at 6:06pm, 6:06 pm, 6pm)
+  final m12 = RegExp(r'(?:at|às|as|time[:\s]*)?\s*\b(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b', caseSensitive: false).firstMatch(line);
+  if (m12 != null) {
+    var h = int.parse(m12.group(1)!);
+    final min = m12.group(2) != null ? int.parse(m12.group(2)!) : 0;
+    final ampm = m12.group(3)!.toLowerCase();
+    if (ampm == 'pm' && h < 12) h += 12;
+    if (ampm == 'am' && h == 12) h = 0;
+    return '${h.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}';
+  }
+
+  // Regex for 24h format (e.g. às 18:06, at 18:06, 18h06, 18:06)
+  final m24 = RegExp(r'(?:at|às|as|time[:\s]*)?\s*(\d{1,2})[:h](\d{2})\b', caseSensitive: false).firstMatch(line);
+  if (m24 != null) {
+    final h = int.parse(m24.group(1)!);
+    final min = int.parse(m24.group(2)!);
+    if (h >= 0 && h < 24 && min >= 0 && min < 60) {
+      return '${h.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}';
+    }
+  }
+
+  return null;
+}
+
 bool _looksLikeSetLine(String? line) =>
     line != null &&
     (_setRe.hasMatch(line) ||
@@ -80,6 +113,7 @@ ParsedWorkout parseHevyText(String text) {
       .toList();
 
   String? dateIso;
+  String? time;
   String? title;
   final exercises = <WorkoutExercise>[];
   final warnings = <String>[];
@@ -99,6 +133,10 @@ ParsedWorkout parseHevyText(String text) {
 
   for (var i = 0; i < lines.length; i++) {
     final line = lines[i];
+
+    if (time == null) {
+      time = _parseTime(line);
+    }
 
     final dateM = _dateRe.firstMatch(line);
     if (dateM != null) {
@@ -191,7 +229,14 @@ ParsedWorkout parseHevyText(String text) {
   if (exercises.isEmpty && warnings.isEmpty) {
     warnings.add('Nenhum exercício reconhecido no texto. Confira se colou o compartilhamento do Hevy.');
   }
-  return ParsedWorkout(dateIso: dateIso, title: title, exercises: exercises, warnings: warnings);
+
+  return ParsedWorkout(
+    dateIso: dateIso,
+    time: time,
+    title: title,
+    exercises: exercises,
+    warnings: warnings,
+  );
 }
 
 bool _isNoteLine(String line) {

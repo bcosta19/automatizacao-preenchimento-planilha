@@ -277,6 +277,31 @@ class _WorkoutEditorScreenState extends State<WorkoutEditorScreen> {
               }
             },
           ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.access_time),
+            title: const Text('Horário do treino'),
+            subtitle: Text(_workout.time ?? 'Não informado'),
+            trailing: const Icon(Icons.edit_outlined),
+            onTap: () async {
+              final initial = _workout.time != null
+                  ? TimeOfDay(
+                      hour: int.tryParse(_workout.time!.split(':')[0]) ?? 18,
+                      minute: int.tryParse(_workout.time!.split(':')[1]) ?? 0,
+                    )
+                  : const TimeOfDay(hour: 18, minute: 0);
+              final picked = await showTimePicker(
+                context: context,
+                initialTime: initial,
+              );
+              if (picked != null) {
+                setState(() {
+                  _workout.time =
+                      '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                });
+              }
+            },
+          ),
           const Divider(height: 24),
           for (var i = 0; i < _workout.exercises.length; i++)
             _ExerciseCard(
@@ -445,6 +470,21 @@ class _SetRowState extends State<_SetRow> {
           : '',
     );
     _repsCtrl = TextEditingController(text: widget.set.reps?.toString() ?? '');
+  }
+
+  @override
+  void didUpdateWidget(covariant _SetRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.set != widget.set) {
+      final wText = widget.set.weight != null
+          ? (widget.set.weight! == widget.set.weight!.roundToDouble()
+              ? widget.set.weight!.toInt().toString()
+              : widget.set.weight!.toStringAsFixed(1).replaceAll('.', ','))
+          : '';
+      if (_weightCtrl.text != wText) _weightCtrl.text = wText;
+      final rText = widget.set.reps?.toString() ?? '';
+      if (_repsCtrl.text != rText) _repsCtrl.text = rText;
+    }
   }
 
   @override

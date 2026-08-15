@@ -138,6 +138,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text('Meta de Cardio',
+                style: Theme.of(context).textTheme.titleSmall),
+          ),
+          Text(
+            'Defina a meta semanal de cardio. No ciclo quinzenal (14 dias), o app calcula automaticamente a meta multiplicada por 2 (${_settings.weeklyCardioMinutes * 2} min), permitindo compensar na segunda semana se necessário.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 10),
+          TextFormField(
+            initialValue: '${_settings.weeklyCardioMinutes}',
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              labelText: 'Meta semanal (minutos)',
+              suffixText: 'min/sem',
+              hintText: 'ex.: 150',
+              helperText: 'Meta total do ciclo: ${_settings.cycleCardioMinutesGoal} min',
+              border: const OutlineInputBorder(),
+              isDense: true,
+            ),
+            onChanged: (v) {
+              final n = int.tryParse(v.trim());
+              if (n != null && n >= 0) {
+                _update((s) => s.weeklyCardioMinutes = n);
+              }
+            },
+          ),
+          const Divider(),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text('Dias do lembrete de esporte',
                 style: Theme.of(context).textTheme.titleSmall),
           ),
